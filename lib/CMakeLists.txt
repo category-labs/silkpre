@@ -14,8 +14,8 @@
    limitations under the License.
 ]]
 
-find_package(ethash CONFIG REQUIRED)
-find_package(intx CONFIG REQUIRED)
+#find_package(ethash CONFIG REQUIRED)
+#find_package(intx CONFIG REQUIRED)
 
 add_library(silkpre
     silkpre/blake2b.c
