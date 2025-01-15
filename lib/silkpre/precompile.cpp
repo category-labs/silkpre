@@ -35,6 +35,10 @@
 #include <silkpre/sha256.h>
 #include <../third_party/bn_wrapper/bn_wrapper.h>
 
+#include <../third_party/mcl-tmp/include/mcl/bn256.hpp>
+const mcl::CurveParam& curve = mcl::BN_SNARK1;
+mcl::bn256::ini
+
 enum {
     EVMC_ISTANBUL = 7,
     EVMC_BERLIN = 8,

@@ -92,6 +92,10 @@ if(MSVC)
 endif()
 add_subdirectory(third_party/libff)
 
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/mcl-tmp)
+target_include_directories(mcl PUBLIC "third_party/mcl-tmp/include")
+
 add_subdirectory(lib)
 
 # if(SILKPRE_TESTING)
