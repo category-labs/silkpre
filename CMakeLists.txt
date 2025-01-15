@@ -17,7 +17,7 @@
 # ethash requires cmake 3.16.2
 cmake_minimum_required(VERSION 3.16.2)
 
-option(SILKPRE_TESTING "Build tests and test tools" OFF)
+option(SILKPRE_TESTING "Build tests and test tools" ON)
 
 get_directory_property(SILKPRE_HAS_PARENT PARENT_DIRECTORY)
 if(NOT SILKPRE_HAS_PARENT)

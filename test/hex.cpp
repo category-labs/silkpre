@@ -13,10 +13,11 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include <stdexcept>
 #include "hex.hpp"
 
 #include <cassert>
+
 
 std::string to_hex(const uint8_t* bytes, size_t len) {
     static const char* kHexDigits{"0123456789abcdef"};
