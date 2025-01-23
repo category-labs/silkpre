@@ -45,7 +45,7 @@ target_include_directories(bn_wrapper INTERFACE ${BN_WRAPPER_INCLUDE_DIR})
 # Set the location of the library file
 set_target_properties(bn_wrapper PROPERTIES IMPORTED_LOCATION ${BN_WRAPPER_LIB})
 
-target_link_libraries(silkpre PUBLIC mcl intx::intx secp256k1 PRIVATE ethash::keccak ff gmp bn_wrapper)
+target_link_libraries(silkpre PUBLIC intx::intx secp256k1 PRIVATE ethash::keccak ff gmp bn_wrapper)
 
 set_property(TARGET silkpre PROPERTY CXX_STANDARD 20)
 

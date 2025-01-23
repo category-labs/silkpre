@@ -92,7 +92,6 @@ if(MSVC)
 endif()
 add_subdirectory(third_party/libff)
 
-
 add_subdirectory(lib)
 
 # if(SILKPRE_TESTING)
