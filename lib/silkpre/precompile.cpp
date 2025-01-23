@@ -35,12 +35,6 @@
 #include <silkpre/sha256.h>
 #include <../third_party/bn_wrapper/bn_wrapper.h>
 
-#include <mcl/bn256.hpp>
-
-void f() {
-    const mcl::CurveParam& curve = mcl::BN_SNARK1;
-};
-
 enum {
     EVMC_ISTANBUL = 7,
     EVMC_BERLIN = 8,
@@ -272,7 +266,6 @@ static void init_libff() noexcept {
 }
 
 static Scalar to_scalar(const uint8_t bytes_be[32]) noexcept {
-
     mpz_t m;
     mpz_init(m);
     mpz_import(m, 32, /*order=*/1, /*size=*/1, /*endian=*/0, /*nails=*/0, bytes_be);
@@ -287,45 +280,6 @@ static bool valid_element_of_fp(const Scalar& x) noexcept {
     return mpn_cmp(x.data, libff::alt_bn128_modulus_q.data, libff::alt_bn128_q_limbs) < 0;
 }
 
-mcl::bn::G1 decode_g1_element_mcl(const uint8_t bytes_be[64]) noexcept {
-size_t size = 64;
-    uint8_t bytes_le[64];
-    for (size_t i = 0; i < size; i++) {
-    bytes_le[i] = bytes_be[size - 1 - i];
-    }
-
-    uint8_t part1[32];
-    uint8_t part2[32];
-
-    // Split the 64-byte array into two 32-byte parts
-    std::memcpy(part1, bytes_le, 32);
-    std::memcpy(part2, bytes_le + 32, 32);
-
-	//mcl::bn::G1 P(le1, le2);
-    //printf(P.getStr(16).c_str());
-    mcl::bn::Fp a;
-    mcl::bn::Fp b;
-
-    bool success1;
-    bool success2; 
-    // everything is backwards yo
-    a.setArray(&success1, part1, 32);
-    b.setArray(&success2, part2, 32);
-
-    // if (!(success1 && success2)) {
-    //     std::cerr << "Failed to initialize field element from input bytes.\n";
-    // } else {
-    //     std::cout << "Field element successfully initialized.\n";
-    // }
-
-    mcl::bn::G1 P(b,a);
-    // End of Dumb code - jk there is not end to it 
-    // Need to prin these values and check if multiplcation
-    // is working
-
-    return P; 
-}
-
 static std::optional<libff::alt_bn128_G1> decode_g1_element(const uint8_t bytes_be[64]) noexcept {
     Scalar x{to_scalar(bytes_be)};
     if (!valid_element_of_fp(x)) {
@@ -336,42 +290,6 @@ static std::optional<libff::alt_bn128_G1> decode_g1_element(const uint8_t bytes_
     if (!valid_element_of_fp(y)) {
         return {};
     }  
-
-    // // This is dumb code
-    // size_t size = 64;
-    // uint8_t bytes_le[64];
-    // for (size_t i = 0; i < size; i++) {
-    // bytes_le[i] = bytes_be[size - 1 - i];
-    // }
-
-    // uint8_t part1[32];
-    // uint8_t part2[32];
-
-    // // Split the 64-byte array into two 32-byte parts
-    // std::memcpy(part1, bytes_le, 32);
-    // std::memcpy(part2, bytes_le + 32, 32);
-
-	// //mcl::bn::G1 P(le1, le2);
-    // //printf(P.getStr(16).c_str());
-    // mcl::bn::Fp a;
-    // mcl::bn::Fp b;
-
-    // bool success1;
-    // bool success2; 
-    // // everything is backwards yo
-    // a.setArray(&success1, part1, 32);
-    // b.setArray(&success2, part2, 32);
-
-    // if (!(success1 && success2)) {
-    //     std::cerr << "Failed to initialize field element from input bytes.\n";
-    // } else {
-    //     std::cout << "Field element successfully initialized.\n";
-    // }
-
-    // mcl::bn::G1 P(b,a);
-    // // End of Dumb code - jk there is not end to it 
-    // // Need to prin these values and check if multiplcation
-    // // is working
 
     if (x.is_zero() && y.is_zero()) {
         return libff::alt_bn128_G1::zero();
