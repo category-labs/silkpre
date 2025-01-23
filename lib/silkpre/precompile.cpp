@@ -289,7 +289,7 @@ static std::optional<libff::alt_bn128_G1> decode_g1_element(const uint8_t bytes_
     Scalar y{to_scalar(bytes_be + 32)};
     if (!valid_element_of_fp(y)) {
         return {};
-    }  
+    }
 
     if (x.is_zero() && y.is_zero()) {
         return libff::alt_bn128_G1::zero();
@@ -383,8 +383,8 @@ SilkpreOutput silkpre_bn_add_run(const uint8_t* ptr, size_t len) {
 uint64_t silkpre_bn_mul_gas(const uint8_t*, size_t, int rev) { return rev >= EVMC_ISTANBUL ? 6'000 : 40'000; }
 
 SilkpreOutput silkpre_bn_mul_run(const uint8_t* ptr, size_t len) {
-    std::basic_string<uint8_t> input(ptr, len); 
-    right_pad(input, 96); 
+    std::basic_string<uint8_t> input(ptr, len);
+    right_pad(input, 96);
 
     uint8_t* out{static_cast<uint8_t*>(std::malloc(64))};
 
