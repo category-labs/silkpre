@@ -365,68 +365,27 @@ static std::basic_string<uint8_t> encode_g1_element(libff::alt_bn128_G1 p) noexc
 
 uint64_t silkpre_bn_add_gas(const uint8_t*, size_t, int rev) { return rev >= EVMC_ISTANBUL ? 150 : 500; }
 
-SilkpreOutput silkpre_bn_add_impl(std::basic_string<uint8_t> input) {
-    init_libff();
-
-    std::optional<libff::alt_bn128_G1> x{decode_g1_element(input.data())};
-    if (!x) {
-        return {nullptr, 0};
-    }
-    std::optional<libff::alt_bn128_G1> y{decode_g1_element(&input[64])};
-    if (!y) {
-        return {nullptr, 0};
-    }
-
-    libff::alt_bn128_G1 sum{*x + *y};
-
-    const std::basic_string<uint8_t> res{encode_g1_element(sum)};
-
-    uint8_t* out{static_cast<uint8_t*>(std::malloc(res.length()))};
-    std::memcpy(out, res.data(), res.length());
-
-    return {out, res.length()};
-}
-
-SilkpreOutput bn_add_impl(std::basic_string<uint8_t> input) {
+SilkpreOutput silkpre_bn_add_run(const uint8_t* ptr, size_t len) {
+    std::basic_string<uint8_t> input(ptr, len);
+    right_pad(input, 128);
+    
     uint8_t* out{static_cast<uint8_t*>(std::malloc(64))};
     auto retval = add_run(input.data(), out);
     if(retval == 0)
     {
-        return {out, 64 };
+        return {out, 64};
     }
 
     std::free(out);
     return {nullptr, 0};
 }
 
-SilkpreOutput silkpre_bn_add_run(const uint8_t* ptr, size_t len) {
-    std::basic_string<uint8_t> input(ptr, len);
-    right_pad(input, 128);
-
-    return bn_add_impl(input);
-}
-
 uint64_t silkpre_bn_mul_gas(const uint8_t*, size_t, int rev) { return rev >= EVMC_ISTANBUL ? 6'000 : 40'000; }
 
-SilkpreOutput silkpre_bn_mul_impl(const std::basic_string<uint8_t> input) {
-    init_libff();
+SilkpreOutput silkpre_bn_mul_run(const uint8_t* ptr, size_t len) {
+    std::basic_string<uint8_t> input(ptr, len); 
+    right_pad(input, 96); 
 
-    std::optional<libff::alt_bn128_G1> x{decode_g1_element(input.data())};
-    if (!x) {
-        return {nullptr, 0};
-    }
-
-    Scalar n{to_scalar(&input[64])};
-
-    libff::alt_bn128_G1 product{n * *x};
-    const std::basic_string<uint8_t> res{encode_g1_element(product)};
-
-    uint8_t* out{static_cast<uint8_t*>(std::malloc(res.length()))};
-    std::memcpy(out, res.data(), res.length());
-    return {out, res.length()};
-}
-
-SilkpreOutput bn_mul_impl(const std::basic_string<uint8_t> input) {
     uint8_t* out{static_cast<uint8_t*>(std::malloc(64))};
 
     auto retval = mul_run(input.data(), out);
@@ -436,13 +395,7 @@ SilkpreOutput bn_mul_impl(const std::basic_string<uint8_t> input) {
     }
     std::free(out);
     return {nullptr, 0};
-}
 
-SilkpreOutput silkpre_bn_mul_run(const uint8_t* ptr, size_t len) {
-    std::basic_string<uint8_t> input(ptr, len); 
-    right_pad(input, 96); 
-
-    return bn_mul_impl(input);      
 }
 
 static constexpr size_t kSnarkvStride{192};
@@ -452,41 +405,10 @@ uint64_t silkpre_snarkv_gas(const uint8_t*, size_t len, int rev) {
     return rev >= EVMC_ISTANBUL ? 34'000 * k + 45'000 : 80'000 * k + 100'000;
 }
 
-SilkpreOutput silkpre_snarkv_impl(const uint8_t* input, size_t len) {
-    size_t k{len / kSnarkvStride};
-
-    init_libff();
-    using namespace libff;
-
-    static const auto one{alt_bn128_Fq12::one()};
-    auto accumulator{one};
-
-    for (size_t i{0}; i < k; ++i) {
-        std::optional<alt_bn128_G1> a{decode_g1_element(&input[i * kSnarkvStride])};
-        if (!a) {
-            return {nullptr, 0};
-        }
-        std::optional<alt_bn128_G2> b{decode_g2_element(&input[i * kSnarkvStride + 64])};
-        if (!b) {
-            return {nullptr, 0};
-        }
-
-        if (a->is_zero() || b->is_zero()) {
-            continue;
-        }
-
-        accumulator = accumulator * alt_bn128_miller_loop(alt_bn128_precompute_G1(*a), alt_bn128_precompute_G2(*b));
+SilkpreOutput silkpre_snarkv_run(const uint8_t* input, size_t len) {
+    if (len % kSnarkvStride != 0) {
+        return {nullptr, 0};
     }
-
-    uint8_t* out{static_cast<uint8_t*>(std::malloc(32))};
-    std::memset(out, 0, 32);
-    if (alt_bn128_final_exponentiation(accumulator) == one) {
-        out[31] = 1;
-    }
-    return {out, 32};
-}
-
-SilkpreOutput bn_snarkv_impl(const uint8_t* input, size_t len) {
     auto retval = batch_snarkv_run(input, len);
     if (retval == 2)
     {
@@ -496,13 +418,6 @@ SilkpreOutput bn_snarkv_impl(const uint8_t* input, size_t len) {
     std::memset(out, 0, 32);
     out[31] = retval;
     return {out, 32};
-}
-
-SilkpreOutput silkpre_snarkv_run(const uint8_t* input, size_t len) {
-    if (len % kSnarkvStride != 0) {
-        return {nullptr, 0};
-    }
-    return bn_snarkv_impl(input, len);
 }
 
 uint64_t silkpre_blake2_f_gas(const uint8_t* input, size_t len, int) {
