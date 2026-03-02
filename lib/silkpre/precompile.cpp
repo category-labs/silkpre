@@ -67,7 +67,7 @@ SilkpreOutput silkpre_ecrec_run(const uint8_t* input, size_t len) {
     }
 
     std::memset(out, 0, 12);
-    static secp256k1_context* context{secp256k1_context_create(SILKPRE_SECP256K1_CONTEXT_FLAGS)};
+    thread_local secp256k1_context* context{secp256k1_context_create(SILKPRE_SECP256K1_CONTEXT_FLAGS)};
     if (!silkpre_recover_address(out + 12, &d[0], &d[64], v != 27, context)) {
         return {out, 0};
     }
