@@ -19,9 +19,11 @@
 #include <gmp.h>
 
 #include <algorithm>
+#include <array>
 #include <bit>
 #include <cstring>
 #include <limits>
+#include <string_view>
 
 #include <intx/intx.hpp>
 #include <libff/algebra/curves/alt_bn128/alt_bn128_pairing.hpp>
@@ -50,8 +52,13 @@ uint64_t silkpre_ecrec_gas(const uint8_t*, size_t, int) { return 3'000; }
 SilkpreOutput silkpre_ecrec_run(const uint8_t* input, size_t len) {
     uint8_t* out{static_cast<uint8_t*>(std::malloc(32))};
 
-    std::basic_string<uint8_t> d(input, len);
-    right_pad(d, 128);
+    std::basic_string_view<uint8_t> d{input, len};
+    uint8_t d_pad[128];
+    if (INTX_UNLIKELY(len < 128)) {
+        std::memcpy(d_pad, input, len);
+        std::memset(d_pad + len, '\0', 128 - len);
+        d = {d_pad, 128};
+    }
 
     const auto v{intx::be::unsafe::load<intx::uint256>(&d[32])};
     const auto r{intx::be::unsafe::load<intx::uint256>(&d[64])};
@@ -118,8 +125,13 @@ static intx::uint256 mult_complexity_eip2565(const intx::uint256& max_length) no
 uint64_t silkpre_expmod_gas(const uint8_t* ptr, size_t len, int rev) {
     const uint64_t min_gas{rev < EVMC_BERLIN ? 0 : 200u};
 
-    std::basic_string<uint8_t> input(ptr, len);
-    right_pad(input, 3 * 32);
+    std::basic_string_view<uint8_t> input{ptr, len};
+    uint8_t input_pad[96];
+    if (INTX_UNLIKELY(len < 96)) {
+        std::memcpy(input_pad, ptr, len);
+        std::memset(input_pad + len, '\0', 96 - len);
+        input = {input_pad, 96};
+    }
 
     intx::uint256 base_len256{intx::be::unsafe::load<intx::uint256>(&input[0])};
     intx::uint256 exp_len256{intx::be::unsafe::load<intx::uint256>(&input[32])};
@@ -137,15 +149,20 @@ uint64_t silkpre_expmod_gas(const uint8_t* ptr, size_t len, int rev) {
     uint64_t base_len64{static_cast<uint64_t>(base_len256)};
     uint64_t exp_len64{static_cast<uint64_t>(exp_len256)};
 
-    input.erase(0, 3 * 32);
+    input.remove_prefix(96);
 
-    intx::uint256 exp_head{0};  // first 32 bytes of the exponent
-    if (input.length() > base_len64) {
-        input.erase(0, base_len64);
-        right_pad(input, 3 * 32);
+    intx::uint256 exp_head{0};          // first 32 bytes of the exponent
+    if (input.length() > base_len64) {  // input cannot be input_pad
+        input.remove_prefix(base_len64);
+        if (INTX_UNLIKELY(input.size() < 32)) {
+            std::memcpy(input_pad, input.data(), input.size());
+            std::memset(input_pad + input.size(), '\0', 32 - input.size());
+            input = {input_pad, 32};
+        }
         if (exp_len64 < 32) {
-            input.erase(exp_len64);
-            input.insert(0, 32 - exp_len64, '\0');
+            std::memset(input_pad, '\0', 32 - exp_len64);
+            std::memmove(input_pad + (32 - exp_len64), input.data(), exp_len64);
+            input = {input_pad, 32};
         }
         exp_head = intx::be::unsafe::load<intx::uint256>(input.data());
     }
@@ -341,9 +358,10 @@ static std::optional<libff::alt_bn128_G2> decode_g2_element(const uint8_t bytes_
     return point;
 }
 
-static std::basic_string<uint8_t> encode_g1_element(libff::alt_bn128_G1 p) noexcept {
-    std::basic_string<uint8_t> out(64, '\0');
+static std::array<uint8_t, 64> encode_g1_element(libff::alt_bn128_G1 p) noexcept {
+    std::array<uint8_t, 64> out;
     if (p.is_zero()) {
+        out.fill('\0');
         return out;
     }
 
@@ -364,9 +382,14 @@ static std::basic_string<uint8_t> encode_g1_element(libff::alt_bn128_G1 p) noexc
 
 uint64_t silkpre_bn_add_gas(const uint8_t*, size_t, int rev) { return rev >= EVMC_ISTANBUL ? 150 : 500; }
 
-SilkpreOutput silkpre_bn_add_run(const uint8_t* ptr, size_t len) {
-    std::basic_string<uint8_t> input(ptr, len);
-    right_pad(input, 128);
+SilkpreOutput silkpre_bn_add_run(const uint8_t* const ptr, const size_t len) {
+    std::basic_string_view<uint8_t> input{ptr, len};
+    uint8_t input_pad[128];
+    if (INTX_UNLIKELY(len < 128)) {
+        std::memcpy(input_pad, ptr, len);
+        std::memset(input_pad + len, '\0', 128 - len);
+        input = {input_pad, 128};
+    }
 
     init_libff();
 
@@ -381,18 +404,23 @@ SilkpreOutput silkpre_bn_add_run(const uint8_t* ptr, size_t len) {
     }
 
     libff::alt_bn128_G1 sum{*x + *y};
-    const std::basic_string<uint8_t> res{encode_g1_element(sum)};
+    const auto res{encode_g1_element(sum)};
 
-    uint8_t* out{static_cast<uint8_t*>(std::malloc(res.length()))};
-    std::memcpy(out, res.data(), res.length());
-    return {out, res.length()};
+    uint8_t* out{static_cast<uint8_t*>(std::malloc(res.size()))};
+    std::memcpy(out, res.data(), res.size());
+    return {out, res.size()};
 }
 
 uint64_t silkpre_bn_mul_gas(const uint8_t*, size_t, int rev) { return rev >= EVMC_ISTANBUL ? 6'000 : 40'000; }
 
-SilkpreOutput silkpre_bn_mul_run(const uint8_t* ptr, size_t len) {
-    std::basic_string<uint8_t> input(ptr, len);
-    right_pad(input, 96);
+SilkpreOutput silkpre_bn_mul_run(const uint8_t* const ptr, const size_t len) {
+    std::basic_string_view<uint8_t> input{ptr, len};
+    uint8_t input_pad[96];
+    if (INTX_UNLIKELY(len < 96)) {
+        std::memcpy(input_pad, ptr, len);
+        std::memset(input_pad + len, '\0', 96 - len);
+        input = {input_pad, 96};
+    }
 
     init_libff();
 
@@ -404,11 +432,11 @@ SilkpreOutput silkpre_bn_mul_run(const uint8_t* ptr, size_t len) {
     Scalar n{to_scalar(&input[64])};
 
     libff::alt_bn128_G1 product{n * *x};
-    const std::basic_string<uint8_t> res{encode_g1_element(product)};
+    const auto res{encode_g1_element(product)};
 
-    uint8_t* out{static_cast<uint8_t*>(std::malloc(res.length()))};
-    std::memcpy(out, res.data(), res.length());
-    return {out, res.length()};
+    uint8_t* out{static_cast<uint8_t*>(std::malloc(res.size()))};
+    std::memcpy(out, res.data(), res.size());
+    return {out, res.size()};
 }
 
 static constexpr size_t kSnarkvStride{192};
