@@ -362,7 +362,7 @@ static std::basic_string<uint8_t> encode_g1_element(libff::alt_bn128_G1 p) noexc
     return out;
 }
 
-uint64_t silkpre_bn_add_gas(const uint8_t*, size_t, int rev) { return rev >= EVMC_ISTANBUL ? 150 : 500; }
+uint64_t silkpre_bn_add_gas(const uint8_t*, size_t, int rev) { return rev >= EVMC_ISTANBUL ? 22'500 : 500; }
 
 SilkpreOutput silkpre_bn_add_run(const uint8_t* ptr, size_t len) {
     std::basic_string<uint8_t> input(ptr, len);
@@ -388,7 +388,7 @@ SilkpreOutput silkpre_bn_add_run(const uint8_t* ptr, size_t len) {
     return {out, res.length()};
 }
 
-uint64_t silkpre_bn_mul_gas(const uint8_t*, size_t, int rev) { return rev >= EVMC_ISTANBUL ? 6'000 : 40'000; }
+uint64_t silkpre_bn_mul_gas(const uint8_t*, size_t, int rev) { return rev >= EVMC_ISTANBUL ? 90'000 : 40'000; }
 
 SilkpreOutput silkpre_bn_mul_run(const uint8_t* ptr, size_t len) {
     std::basic_string<uint8_t> input(ptr, len);
@@ -415,7 +415,7 @@ static constexpr size_t kSnarkvStride{192};
 
 uint64_t silkpre_snarkv_gas(const uint8_t*, size_t len, int rev) {
     uint64_t k{len / kSnarkvStride};
-    return rev >= EVMC_ISTANBUL ? 34'000 * k + 45'000 : 80'000 * k + 100'000;
+    return rev >= EVMC_ISTANBUL ? 340'000 * k + 450'000 : 80'000 * k + 100'000;
 }
 
 SilkpreOutput silkpre_snarkv_run(const uint8_t* input, size_t len) {
